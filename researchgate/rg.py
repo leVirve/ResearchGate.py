@@ -5,83 +5,22 @@ import logging
 
 import aiohttp
 
-from rgparse import parse_info, parse_publications, parse_member_list
+from profile import Profile
+from organization import get_members, MEMBER_LIST
 from utils import ProgressBar
 
 
 program = 'researchgate_logger'
-MEMBER_LIST = 'member-list'
 logger = logging.getLogger(program)
 logger.setLevel(logging.DEBUG)
 logging.basicConfig(filename='crawler.log', level=logging.INFO)
 
 
-def chunked_http_client(num_chunks):
-    semaphore = asyncio.Semaphore(num_chunks)
-
-    @asyncio.coroutine
-    def http_get(url):
-        nonlocal semaphore
-        with await semaphore:
-            response = yield from aiohttp.get(url)
-            body = yield from response.text()
-            yield from response.wait_for_close()
-        return body
-    return http_get
-
-
-class Profile:
-
-    PROFILE_FORMAT = 'http://www.researchgate.net/profile/%s'
-    PUBLICATION_URL = '%s/publications' % PROFILE_FORMAT
-    INFO_URL = '%s/info' % PROFILE_FORMAT
-
-    def __init__(self, user_id, session):
-        self.user_id = user_id
-        self.session = session
-
-    async def get(self, url):
-        try:
-            async with self.session.get(url) as r:
-                body = await r.text()
-            return body
-        except:
-            logger.info('{} fails'.format(url))
-
-    async def get_info(self):
-        body = await self.get(self.INFO_URL % self.user_id)
-        if body is None:
-            return
-        parse_info.delay(self.user_id, body)
-        return '{} info'.format(self.user_id)
-
-    async def get_publications(self):
-        body = await self.get(self.PUBLICATION_URL % self.user_id)
-        if body is None:
-            return
-        parse_publications.delay(self.user_id, body)
-        return '{} publications'.format(self.user_id)
-
-
-def all_members_of(name='National_Tsing_Hua_University'):
-    urls = ['https://www.researchgate.net/institution/{}/members/{}'
-            .format(name, i) for i in range(1, 18)]
-
-    http_client = chunked_http_client(200)
-    tasks = [http_client(url) for url in urls]
-
-    members = []
-    for future in asyncio.as_completed(tasks):
-        data = await future
-        members += parse_member_list(data)
-    return members
-
-
-def save_member_list():
+def save_member_list(name):
     s = time.time()
     with open(MEMBER_LIST, 'w') as f:
         loop = asyncio.get_event_loop()
-        members = loop.run_until_complete(all_members_of())
+        members = loop.run_until_complete(get_members(name))
         f.write('\n'.join(members))
     logger.info('End in {:.9f} sec'.format(time.time() - s))
 
@@ -109,7 +48,7 @@ if __name__ == '__main__':
 
     if os.path.exists(MEMBER_LIST) is False:
         print('Get member list...')
-        save_member_list()
+        save_member_list('National_Tsing_Hua_University')
 
     names = []
     with open(MEMBER_LIST, 'r') as f:
