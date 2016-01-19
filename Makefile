@@ -1,5 +1,8 @@
-all: celery mongo
+all: celery mongo app
 
+
+app:
+	python researchgate/rg.py
 
 celery:
 	celery -A rgparse worker -l info --concurrency=10 > ./tmp/log.txt 2>&1 &
