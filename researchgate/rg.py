@@ -22,7 +22,7 @@ def chunked_http_client(num_chunks):
     @asyncio.coroutine
     def http_get(url):
         nonlocal semaphore
-        with (yield from semaphore):
+        with await semaphore:
             response = yield from aiohttp.get(url)
             body = yield from response.text()
             yield from response.wait_for_close()
@@ -39,7 +39,6 @@ class Profile:
     def __init__(self, user_id, session):
         self.user_id = user_id
         self.session = session
-        self._profile = {'name': user_id}
 
     async def get(self, url):
         try:
@@ -79,7 +78,7 @@ def all_members_of(name='National_Tsing_Hua_University'):
 
     members = []
     for future in asyncio.as_completed(tasks):
-        data = yield from future
+        data = await future
         members += parse(data)
     return members
 
