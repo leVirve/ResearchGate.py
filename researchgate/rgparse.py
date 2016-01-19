@@ -58,3 +58,12 @@ def parse_publications(user_id, body):
             'type': pub_meta[1].strip(),
             'time': pub_meta[2].strip(),
         })
+
+
+def parse_member_list(resp):
+
+    soup = BeautifulSoup(resp, 'lxml')
+    return [
+        a.get('href').split('/')[-1]
+        for a in soup.select('.list li a.display-name')
+        ]

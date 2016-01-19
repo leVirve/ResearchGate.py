@@ -5,7 +5,7 @@ import logging
 
 import aiohttp
 
-from rgparse import parse_info, parse_publications
+from rgparse import parse_info, parse_publications, parse_member_list
 from utils import ProgressBar
 
 
@@ -70,16 +70,10 @@ def all_members_of(name='National_Tsing_Hua_University'):
     http_client = chunked_http_client(200)
     tasks = [http_client(url) for url in urls]
 
-    def parse(resp):
-        soup = BeautifulSoup(resp, 'lxml')
-        return [
-            a.get('href').split('/')[-1]
-            for a in soup.select('.list li a.display-name')]
-
     members = []
     for future in asyncio.as_completed(tasks):
         data = await future
-        members += parse(data)
+        members += parse_member_list(data)
     return members
 
 
